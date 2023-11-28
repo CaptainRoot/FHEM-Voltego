@@ -116,6 +116,8 @@ sub Voltego_Define($$) {
       $name, InternalVal( $name, 'INTERVAL', undef ) );
 
     InternalTimer( gettimeofday() + 15, "Voltego_UpdateDueToTimer", $hash ) if ( defined $hash );
+
+    InternalTimer( gettimeofday() + 45, "Voltego_HourTaskTimer", $hash ) if ( defined $hash );
     
     return undef;
 }
