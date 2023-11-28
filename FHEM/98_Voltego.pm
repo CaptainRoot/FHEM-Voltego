@@ -11,7 +11,6 @@ use DateTime;
 use DateTime::Format::Strptime;
 use List::Util qw(max);
 use Date::Parse;
-use Time::Piece;
 
 my %Voltego_gets = (
     update         => " ",
@@ -492,10 +491,11 @@ sub Voltego_HourTaskTimer($) {
 
     my $reading = 'Price_ct_';
 
-    # Aktuelle Zeit holen
-    my $currentTime = localtime;
+    my $timeZone = DateTime::TimeZone->new(name => 'local');
 
-    $currentTime = $currentTime->truncate(to => 'hour');
+    my $currentTime = DateTime->now(time_zone => $timeZone);
+
+    $currentTime = $currentTime->set(minute => 0, second => 0);
 
     my $currentHour = $currentTime->strftime('%H'); 
 
