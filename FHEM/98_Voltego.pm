@@ -11,6 +11,7 @@ use DateTime;
 use DateTime::Format::Strptime;
 use List::Util qw(max);
 use Date::Parse;
+use Time::Piece;
 
 my %Voltego_gets = (
     update         => " ",
@@ -45,10 +46,6 @@ sub Voltego_Initialize($) {
     $hash->{SetFn}     = 'Voltego_Set';
     $hash->{GetFn}     = 'Voltego_Get';
     $hash->{AttrFn}    = 'Voltego_Attr';
-    $hash->{ReadFn}    = '';
-    $hash->{WriteFn}   = '';
-    $hash->{Clients}   = '';
-    $hash->{MatchList} = { '1:VoltegoDevice' => '^Voltego;.*' };
     $hash->{AttrList}  = $readingFnAttributes;
 
     Log 3, "Voltego module initialized.";
@@ -116,9 +113,9 @@ sub Voltego_Define($$) {
 
     Log3 $name, 1,
       sprintf( "Voltego_Define %s: Starting timer with interval %s",
-        $name, InternalVal( $name, 'INTERVAL', undef ) );
+      $name, InternalVal( $name, 'INTERVAL', undef ) );
 
-    InternalTimer( gettimeofday() + InternalVal( $name, 'INTERVAL', undef ), "Voltego_UpdateDueToTimer", $hash ) if ( defined $hash );
+    InternalTimer( gettimeofday() + 15, "Voltego_UpdateDueToTimer", $hash ) if ( defined $hash );
     
     return undef;
 }
@@ -284,14 +281,16 @@ sub Voltego_Set($@) {
     if ( $opt eq "start" ) {
 
         readingsSingleUpdate( $hash, 'state', 'Started', 0 );
+
         RemoveInternalTimer($hash);
 
         $hash->{LOCAL} = 1;
         Voltego_RequestUpdate($hash);
         delete $hash->{LOCAL};
 
-        InternalTimer( gettimeofday() + InternalVal( $name, 'INTERVAL', undef ),
-            "Voltego_UpdateDueToTimer", $hash );
+        Voltego_HourTaskTimer($hash);
+
+        InternalTimer( gettimeofday() + InternalVal( $name, 'INTERVAL', undef ), "Voltego_UpdateDueToTimer", $hash );
 
         Log3 $name, 1,
           sprintf( "Voltego_Set %s: Updated readings and started timer to automatically update readings with interval %s",
@@ -301,8 +300,11 @@ sub Voltego_Set($@) {
     elsif ( $opt eq "stop" ) {
 
         RemoveInternalTimer($hash);
+
         Log3 $name, 1,"Voltego_Set $name: Stopped the timer to automatically update readings";
+        
         readingsSingleUpdate( $hash, 'state', 'Initialized', 0 );
+        
         return undef;
 
     }
@@ -468,17 +470,59 @@ sub Voltego_UpdateDueToTimer($) {
     my ($hash) = @_;
     my $name = $hash->{NAME};
 
-#local allows call of function without adding new timer.
-#must be set before call ($hash->{LOCAL} = 1) and removed after (delete $hash->{LOCAL};)
+    #local allows call of function without adding new timer.
+    #must be set before call ($hash->{LOCAL} = 1) and removed after (delete $hash->{LOCAL};)
     if ( !$hash->{LOCAL} ) {
-        RemoveInternalTimer($hash);
+        RemoveInternalTimer($hash, "Voltego_UpdateDueToTimer");
 
-        InternalTimer( gettimeofday() + InternalVal( $name, 'INTERVAL', undef ),
-            "Voltego_UpdateDueToTimer", $hash );
+        InternalTimer( gettimeofday() + InternalVal( $name, 'INTERVAL', undef ),"Voltego_UpdateDueToTimer", $hash );
+
         readingsSingleUpdate( $hash, 'state', 'Polling', 0 );
     }
 
     Voltego_RequestUpdate($hash);
+}
+
+sub Voltego_HourTaskTimer($) {
+
+    my ($hash) = @_;
+    my $name = $hash->{NAME};
+
+    my $reading = 'Price_ct_';
+
+    # Aktuelle Zeit holen
+    my $currentTime = localtime;
+
+    $currentTime = $currentTime->truncate(to => 'hour');
+
+    my $currentHour = $currentTime->strftime('%H'); 
+
+    my $nextHourTime = $currentTime->add_hours(1);
+
+    my $nextHour = $nextHourTime->strftime('%H'); 
+
+    my $hourTaskTimestamp = $nextHourTime->epoch;
+
+    my $currentPrice = ReadingsVal($name, $reading.$currentHour, undef);
+
+    if (defined $currentPrice)
+    {
+        readingsBeginUpdate($hash);
+
+        readingsBulkUpdate( $hash, "Price_Current_ct", $currentPrice);
+        readingsBulkUpdate( $hash, "Price_Current_h",  $currentHour);
+        
+        readingsEndUpdate($hash, 1 );
+    }
+
+    #local allows call of function without adding new timer.
+    #must be set before call ($hash->{LOCAL} = 1) and removed after (delete $hash->{LOCAL};)
+    if ( !$hash->{LOCAL} ) {
+
+        RemoveInternalTimer($hash, "Voltego_HourTaskTimer");
+
+        InternalTimer( $hourTaskTimestamp, "Voltego_HourTaskTimer", $hash );
+    }
 }
 
 sub Voltego_RequestUpdate($) {
