@@ -499,7 +499,7 @@ sub Voltego_HourTaskTimer($) {
 
     my $currentHour = $currentTime->strftime('%H'); 
 
-    my $nextHourTime = $currentTime->add_hours(1);
+    my $nextHourTime = $currentTime->add(hours => 1);
 
     my $nextHour = $nextHourTime->strftime('%H'); 
 
