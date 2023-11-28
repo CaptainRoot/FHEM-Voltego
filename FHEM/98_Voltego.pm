@@ -505,7 +505,7 @@ sub Voltego_HourTaskTimer($) {
 
     my $hourTaskTimestamp = $nextHourTime->epoch;
 
-    my $currentPrice = ReadingsVal($name, $reading.$currentHour, undef);
+    my $currentPrice = ReadingsVal($name, $reading.'0_'.$currentHour, undef);
 
     if (defined $currentPrice)
     {
