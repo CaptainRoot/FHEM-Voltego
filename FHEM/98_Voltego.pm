@@ -758,6 +758,41 @@ sub deleteReadingspec {
         </ul>
     </ul>
     <br>
+        <a name="Voltegoattr"></a>
+    <b>Attributes</b>
+    <ul>
+        <code>attr &lt;name&gt; &lt;attribute&gt; &lt;value&gt;</code>
+        <br>
+        <br> You can change the behaviour of the Voltego Device.
+        <br>
+        <br> Attributes:
+        <ul>
+            <li><i>showEPEXSpot</i>
+                <br> When set to <i>yes</i>, reading <i>EPEXSpot_ct_?_??</i> are generated
+                <br/><b>If this attribute is set to <i>no</i> or if the attribute is not existing no readings for <i>EPEXSpot_ct_?_??</i> will be generated..</b>
+            </li>
+            <li><i>showWithTax</i>
+                <br> When set to <i>yes</i>, reading <i>EPEXSpotTax_ct_?_??</i> are generated
+                <br/><b>If this attribute is set to <i>no</i> or if the attribute is not existing no readings for <i>EPEXSpotTax_ct_?_??</i> will be generated..</b>
+            </li>
+            <li><i>showWithLeviesTaxes</i>
+                <br> When set to <i>yes</i>, reading <i>TotalPrice_ct_?_??</i> are generated
+                <br/><b>If this attribute is set to <i>no</i> or if the attribute is not existing no readings for <i>TotalPrice_ct_?_??</i> will be generated..</b>
+            </li>
+
+            <li><i>TaxRate</i>
+                <br> Tex rate in precentage, used fpr calculating prices with tax <i>EPEXSpotTax_ct_?_??</i> or <i>TotalPrice_ct_?_??</i>.
+                <br/> 
+            </li>
+            <li><i>LeviesTaxes_ct</i>
+                <br> Levies and taxes in cents, used fpr calculating <i>TotalPrice_ct_?_??</i>.
+            </li>
+            <li><i>NetCosts_ct</i>
+                <br>Netcosts in cents (without tax), used fpr calculating <i>TotalPrice_ct_?_??</i>.
+            </li>
+        </ul>
+ 	</ul>
+    <br>
     <a name="Voltegoreadings"></a>
     <b>Generated Readings:</b>
 		<br>
@@ -772,11 +807,23 @@ sub deleteReadingspec {
             <li><b>NextUpdate</b>
                 <br>Time when the energy prices will next be queried from Voltego
             </li>
-            <li><b>Price_ct_0_00 .. Price_ct_0_23</b>
-                <br> Energy price in cents for today per hour Price_ct_0_&lt;hour&gt;
+            <li><b>EPEXSpot_ct_0_00 .. EPEXSpot_ct_0_23</b>
+                <br> Energy price in cents for today per hour EPEXSpot_ct_0_&lt;hour&gt;
             </li>
-            <li><b>Price_ct_1_00 .. Price_ct_1_23</b>
-                <br>Energy price in cents for tommorow per hour Price_ct_1_&lt;hour&gt; when available
+            <li><b>EPEXSpot_ct_1_00 .. EPEXSpot_ct_1_23</b>
+                <br>Energy price in cents for tommorow per hour EPEXSpot_ct_1_&lt;hour&gt; when available
+            </li>
+            <li><b>EPEXSpotTax_ct_0_00 .. EPEXSpotTax_ct_0_23</b>
+                <br> Energy price including tax in cents for today per hour EPEXSpotTax_ct_0_&lt;hour&gt;
+            </li>
+            <li><b>EPEXSpotTax_ct_1_00 .. EPEXSpotTax_ct_1_23</b>
+                <br>Energy price including taxin cents for tommorow per hour EPEXSpotTax_ct_1_&lt;hour&gt; when available
+            </li>
+             <li><b>TotalPrice_ct_0_00 .. TotalPrice_ct_0_23</b>
+                <br> Energy price including tax, net costs and levies in cents for today per hour TotalPrice_ct_0_&lt;hour&gt;
+            </li>
+            <li><b>TotalPrice_ct_1_00 .. TotalPrice_ct_1_23</b>
+                <br>Energy price including tax, net costs and levies in cents for tommorow per hour TotalPrice_ct_1_&lt;hour&gt; when available
             </li>
             <li><b>TimeZone</b>
                 <br> Time zone used for display and evaluation
