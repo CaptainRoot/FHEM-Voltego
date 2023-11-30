@@ -14,13 +14,13 @@ use Date::Parse;
 
 my %Voltego_gets = (
     update         => " ",
-    newToken       => " ",
+    newToken       => " "
 );
 
 my %Voltego_sets = (
     start        => " ",
     stop         => " ",
-    interval     => " ",
+    interval     => " "
 );
 
 my %url = (
@@ -45,7 +45,14 @@ sub Voltego_Initialize($) {
     $hash->{SetFn}     = 'Voltego_Set';
     $hash->{GetFn}     = 'Voltego_Get';
     $hash->{AttrFn}    = 'Voltego_Attr';
-    $hash->{AttrList}  = $readingFnAttributes;
+    $hash->{AttrList}  = 	
+      'showEPEXSpot:yes,no '
+	. 'showWithTax:yes,no '
+	. 'showWithLeviesTaxes:yes,no '
+    . 'TaxRate '
+	. 'LeviesTaxes_ct '
+	. 'NetCosts_ct '
+	.$readingFnAttributes;
 
     Log 3, "Voltego module initialized.";
 }
@@ -104,9 +111,13 @@ sub Voltego_Define($$) {
 
     readingsSingleUpdate( $hash, 'state', 'Undefined', 0 );
 
-#CommandAttr(undef,$name.' generateDevices no') if ( AttrVal($name,'generateDevices','none') eq 'none' );
-#CommandAttr(undef,$name.' generateMobileDevices no') if ( AttrVal($name,'generateMobileDevices','none') eq 'none' );
-#CommandAttr(undef,$name.' generateWeather no') if ( AttrVal($name,'generateWeather','none') eq 'none' );
+    CommandAttr(undef, $name.' showEPEXSpot yes') if ( AttrVal($name,'showEPEXSpot','none') eq 'none' );
+    CommandAttr(undef, $name.' showWithTax no') if ( AttrVal($name,'showWithTax','none') eq 'none' );
+    CommandAttr(undef, $name.' showWithLeviesTaxes yes') if ( AttrVal($name,'showWithLeviesTaxes','none') eq 'none' );
+
+    CommandAttr(undef, $name.' TaxRate 19') if ( AttrVal($name,'TaxRate','none') eq 'none' );
+    CommandAttr(undef, $name.' LeviesTaxes_ct 0.00') if ( AttrVal($name,'LeviesTaxes_ct','none') eq 'none' );
+    CommandAttr(undef, $name.' NetCosts_ct 0.00') if ( AttrVal($name,'NetCosts_ct','none') eq 'none' );
 
     RemoveInternalTimer($hash);
 
@@ -276,7 +287,7 @@ sub Voltego_Set($@) {
 
     if ( !defined( $Voltego_sets{$opt} ) ) {
         my @cList = keys %Voltego_sets;
-        return "Unknown argument $opt, choose one of newToken start stop interval";
+        return "Unknown argument $opt, choose one of start stop interval";
     }
 
     if ( $opt eq "start" ) {
@@ -397,8 +408,6 @@ sub Voltego_UpdatePricesCallback($) {
         # Auf die Liste der Elemente zugreifen
         my $elements = $d->{'elements'};
 
-        readingsBeginUpdate($hash);
-
         # Iteriere durch die Elemente und gib den Begin-Zeitpunkt und den Preis aus
         foreach my $element (@$elements) {
 
@@ -424,10 +433,10 @@ sub Voltego_UpdatePricesCallback($) {
                 else {     
                     $index = 1;
                 }
-
-                $reading .= $index;
+              
                 $prices{$index}{$begin_Hour} = $price;
-                $reading .= '_'.$begin_Hour;
+
+                $reading .= $index.'_'.$begin_Hour;
 
                 if(!defined($prices{$index}{'Min'}) || $price < $prices{$index}{'Min'}){
                     $prices{$index}{'Min'} = $price;
@@ -436,16 +445,58 @@ sub Voltego_UpdatePricesCallback($) {
                 if(!defined($prices{$index}{'Max'}) || $price > $prices{$index}{'Max'}){
                     $prices{$index}{'Max'} = $price;
                 }
-
-                readingsBulkUpdate( $hash, $reading, $price );
             }
         }
 
+        readingsBeginUpdate($hash);
 
-        readingsBulkUpdate( $hash, "Price_ct_0_Min", $prices{0}{'Min'}) if ( defined $prices{0}{'Min'} );
-        readingsBulkUpdate( $hash, "Price_ct_0_Max", $prices{0}{'Max'}) if ( defined $prices{0}{'Max'} );
-        readingsBulkUpdate( $hash, "Price_ct_1_Min", $prices{1}{'Min'}) if ( defined $prices{1}{'Min'} );
-        readingsBulkUpdate( $hash, "Price_ct_1_Max", $prices{1}{'Max'}) if ( defined $prices{1}{'Max'} );
+        for my $day (keys(%prices)) {
+            
+            my $hours = $prices{$day};
+           
+            for my $hour (keys(%$hours)) {
+
+                my $price = $prices{$day}{$hour};
+
+                my $showEPEXSpot = AttrVal($name, 'showEPEXSpot', 'no');
+
+                if ($showEPEXSpot eq 'yes') {
+
+                    my $reading = 'EPEXSpot_ct_'. $day. '_'. $hour;
+                    
+                    Log3 $name, 5, 'Generate Reading; '.$reading.' with price: '.$price; 
+                    
+                    readingsBulkUpdate( $hash, $reading, $price );
+                }
+
+                my $showWithTax = AttrVal($name, 'showWithTax', 'no');
+                my $taxRate     = AttrVal($name, 'TaxRate', undef);
+
+                if ($showWithTax eq 'yes' && defined($taxRate)){
+
+                    my $reading = 'EPEXSpotTax_ct_'. $day. '_'. $hour;
+                    my $priceWithTax = $price * (1 + ($taxRate / 100));
+
+                    Log3 $name, 5, 'Generate Reading; '.$reading.' with price: '.$priceWithTax;
+
+                    readingsBulkUpdate( $hash, $reading, $priceWithTax );
+                }
+
+                my $showWithLeviesTaxes = AttrVal($name, 'showWithLeviesTaxes', 'no');
+                my $leviesTaxes_ct      = AttrVal($name, 'LeviesTaxes_ct', 0.0);
+                my $netCosts_ct         = AttrVal($name, 'NetCosts_ct', 0.0);
+
+                if ($showWithLeviesTaxes eq 'yes' && defined($taxRate)){
+
+                    my $reading = 'TotalPrice_ct_'. $day. '_'. $hour;
+                    my $priceTotal = ($price + $leviesTaxes_ct + $netCosts_ct)  * (1 + ($taxRate / 100));
+
+                    Log3 $name, 5, 'Generate Reading; '.$reading.' with price: '.$priceTotal;
+
+                    readingsBulkUpdate( $hash, $reading, $priceTotal );
+                }
+            }
+        }
 
         readingsBulkUpdate( $hash, "TimeZone",     $local_time_zone->name );
         readingsBulkUpdate( $hash, "LastUpdate",   DateTime->now(time_zone => $local_time_zone)->strftime('%Y-%m-%d %H:%M:%S %z'));
@@ -453,8 +504,15 @@ sub Voltego_UpdatePricesCallback($) {
         readingsBulkUpdate( $hash, "NextUpdate",   DateTime->now(time_zone => $local_time_zone)->add(seconds => InternalVal( $name, 'INTERVAL', 0 ))->strftime('%Y-%m-%d %H:%M:%S %z') );
         
         #Falls nicht verfügbar alte readings löschen
-        deleteReadingspec ($hash, "Price_ct_0.*") if ( !defined $prices{0}{'Min'} );
-        deleteReadingspec ($hash, "Price_ct_1.*") if ( !defined $prices{1}{'Min'} );
+        deleteReadingspec ($hash, "EPEXSpot_ct_0.*") if ( !defined $prices{0}{'Min'} );
+        deleteReadingspec ($hash, "EPEXSpot_ct_1.*") if ( !defined $prices{1}{'Min'} );
+
+        deleteReadingspec ($hash, "EPEXSpotTax_ct_0.*") if ( !defined $prices{0}{'Min'} );
+        deleteReadingspec ($hash, "EPEXSpotTax_ct_1.*") if ( !defined $prices{1}{'Min'} );
+
+        deleteReadingspec ($hash, "TotalPrice_ct_0.*") if ( !defined $prices{0}{'Min'} );
+        deleteReadingspec ($hash, "TotalPrice_ct_1.*") if ( !defined $prices{1}{'Min'} );
+
 
         readingsEndUpdate( $hash, 1 );
     };
@@ -489,7 +547,7 @@ sub Voltego_HourTaskTimer($) {
     my ($hash) = @_;
     my $name = $hash->{NAME};
 
-    my $reading = 'Price_ct_';
+    my @readings = ( 'EPEXSpot_', 'EPEXSpotTax_', 'TotalPrice_' );
 
     my $timeZone = DateTime::TimeZone->new(name => 'local');
 
@@ -505,16 +563,26 @@ sub Voltego_HourTaskTimer($) {
 
     my $hourTaskTimestamp = $nextHourTime->epoch;
 
-    my $currentPrice = ReadingsVal($name, $reading.'0_'.$currentHour, undef);
-
-    if (defined $currentPrice)
-    {
-        readingsBeginUpdate($hash);
-
-        readingsBulkUpdate( $hash, "Price_Current_ct", $currentPrice);
-        readingsBulkUpdate( $hash, "Price_Current_h",  $currentHour);
+    for my $reading (@readings){
         
-        readingsEndUpdate($hash, 1 );
+        Log3 $name, 5, 'Reading; '.$reading;
+
+        my $currentPrice = ReadingsVal($name, $reading.'ct_0_'.$currentHour, undef);
+        
+        if (defined $currentPrice)
+        {
+            Log3 $name, 5, 'currentPrice; '.$currentPrice;
+
+            Log3 $name, 5, 'Generate Reading; '.$reading."Current_ct";
+            Log3 $name, 5, 'Generate Reading; '.$reading."Current_h";
+
+            readingsBeginUpdate($hash);
+
+            readingsBulkUpdate( $hash, $reading."Current_ct", $currentPrice);
+            readingsBulkUpdate( $hash, $reading."Current_h",  $currentHour);
+            
+            readingsEndUpdate($hash, 1 );
+        }   
     }
 
     #local allows call of function without adding new timer.
