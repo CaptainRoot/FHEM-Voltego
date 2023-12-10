@@ -264,7 +264,7 @@ sub Voltego_Get($@) {
 
         Log3 $name, 3, "Voltego_Get Voltego_RequestUpdate $name: Updating ....s";
         $hash->{LOCAL} = 1;
-        ($hash);
+        #($hash);
 
         Voltego_RequestUpdate($hash);
 
@@ -558,23 +558,39 @@ sub Voltego_HourTaskTimer($) {
 
     my $timeZone = DateTime::TimeZone->new(name => 'local');
 
+    # currentTime
     my $currentTime = DateTime->now(time_zone => $timeZone);
 
     $currentTime = $currentTime->set(minute => 0, second => 0);
 
     my $currentHour = $currentTime->strftime('%H'); 
 
-    my $nextHourTime = $currentTime->add(hours => 1, minutes => 1);
+    Log3 $name, 5, 'currentHour; '.$currentHour;
+
+    # nextHourTime
+    my $nextHourTime = DateTime->now(time_zone => $timeZone);
+
+    $nextHourTime = $nextHourTime->set(minute => 0, second => 0);
+    
+    $nextHourTime = $nextHourTime->add(hours => 1, minutes => 1);
 
     my $nextHour = $nextHourTime->strftime('%H'); 
 
-    my $previousHourTime = $currentTime->add(minutes => 1);
+    my $hourTaskTimestamp = $nextHourTime->epoch;
 
-    $previousHourTime    = $previousHourTime->subtract(hours => 1);
+    Log3 $name, 5, 'nextHour; '.$nextHour;
+    Log3 $name, 5, 'hourTaskTimestamp; '.$hourTaskTimestamp;
+
+    # previousHourTime
+    my $previousHourTime = DateTime->now(time_zone => $timeZone);
+
+    $previousHourTime = $previousHourTime->set(minute => 0, second => 0);
+
+    $previousHourTime = $previousHourTime->subtract(hours => 1);
 
     my $previousHour = $previousHourTime->strftime('%H');
 
-    my $hourTaskTimestamp = $nextHourTime->epoch;
+    Log3 $name, 5, 'previousHour; '.$previousHour;
 
     for my $reading (@readings){
         
