@@ -569,10 +569,10 @@ sub Voltego_HourTaskTimer($) {
     my $nextHour = $nextHourTime->strftime('%H'); 
 
     my $previousHourTime = $currentHour->add(minutes => 1);
-    
-    $previousHourTime    = $previousHour->subtract(hours => 1);
 
-    my $previousHour = $previousHour->strftime('%H');
+    $previousHourTime    = $previousHourTime->subtract(hours => 1);
+
+    my $previousHour = $previousHourTime->strftime('%H');
 
     my $hourTaskTimestamp = $nextHourTime->epoch;
 
