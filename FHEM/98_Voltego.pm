@@ -643,8 +643,8 @@ sub Voltego_HourTaskTimer($) {
 
             readingsBeginUpdate($hash);
 
-            readingsBulkUpdate( $hash, $reading."Next_ct", $currentPrice);
-            readingsBulkUpdate( $hash, $reading."Next_h",  $currentHour);
+            readingsBulkUpdate( $hash, $reading."Next_ct", $nextPrice);
+            readingsBulkUpdate( $hash, $reading."Next_h",  $nextHour);
             
             readingsEndUpdate($hash, 1 );
         } 
