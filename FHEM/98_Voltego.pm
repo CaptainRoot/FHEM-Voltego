@@ -49,6 +49,9 @@ sub Voltego_Initialize($) {
       'showEPEXSpot:yes,no '
 	. 'showWithTax:yes,no '
 	. 'showWithLeviesTaxes:yes,no '
+	. 'showCurrentHour:yes,no '
+	. 'showNextHour:yes,no '
+	. 'showPreviousHour:yes,no '
     . 'TaxRate '
 	. 'LeviesTaxes_ct '
 	. 'NetCosts_ct '
@@ -114,6 +117,10 @@ sub Voltego_Define($$) {
     CommandAttr(undef, $name.' showEPEXSpot yes') if ( AttrVal($name,'showEPEXSpot','none') eq 'none' );
     CommandAttr(undef, $name.' showWithTax no') if ( AttrVal($name,'showWithTax','none') eq 'none' );
     CommandAttr(undef, $name.' showWithLeviesTaxes yes') if ( AttrVal($name,'showWithLeviesTaxes','none') eq 'none' );
+
+    CommandAttr(undef, $name.' showCurrentHour yes') if ( AttrVal($name,'v','none') eq 'none' );
+    CommandAttr(undef, $name.' showNextHour yes') if ( AttrVal($name,'showNextHour','none') eq 'none' );
+    CommandAttr(undef, $name.' showPreviousHour yes') if ( AttrVal($name,'showPreviousHour','none') eq 'none' );
 
     CommandAttr(undef, $name.' TaxRate 19') if ( AttrVal($name,'TaxRate','none') eq 'none' );
     CommandAttr(undef, $name.' LeviesTaxes_ct 0.00') if ( AttrVal($name,'LeviesTaxes_ct','none') eq 'none' );
@@ -561,16 +568,28 @@ sub Voltego_HourTaskTimer($) {
 
     my $nextHour = $nextHourTime->strftime('%H'); 
 
+    my $previousHourTime = $currentHour->add(minutes => 1);
+    
+    $previousHourTime    = $previousHour->subtract(hours => 1);
+
+    my $previousHour = $previousHour->strftime('%H');
+
     my $hourTaskTimestamp = $nextHourTime->epoch;
 
     for my $reading (@readings){
         
         Log3 $name, 5, 'Reading; '.$reading;
 
-        my $currentPrice = ReadingsVal($name, $reading.'ct_0_'.$currentHour, undef);
+        my $currentPrice  = ReadingsVal($name, $reading.'ct_0_'.$currentHour, undef);
+        my $previousPrice = ReadingsVal($name, $reading.'ct_0_'.$previousHour, undef);
+        my $nextPrice     = ReadingsVal($name, $reading.'ct_0_'.$nextHour, undef);
         
-        if (defined $currentPrice)
-        {
+        my $showCurrentHour  = AttrVal($name, 'showCurrentHour', 'no');
+        my $showPreviousHour = AttrVal($name, 'showPreviousHour', 'no');
+        my $showNextHour     = AttrVal($name, 'showNextHour', 'no');
+
+        if ($showCurrentHour eq 'yes' && defined $currentPrice){
+
             Log3 $name, 5, 'currentPrice; '.$currentPrice;
 
             Log3 $name, 5, 'Generate Reading; '.$reading."Current_ct";
@@ -583,6 +602,36 @@ sub Voltego_HourTaskTimer($) {
             
             readingsEndUpdate($hash, 1 );
         }   
+
+        if ($showPreviousHour eq 'yes' && defined $previousPrice){
+
+            Log3 $name, 5, 'previousPrice; '.$previousPrice;
+
+            Log3 $name, 5, 'Generate Reading; '.$reading."Previous_ct";
+            Log3 $name, 5, 'Generate Reading; '.$reading."Previous_h";
+
+            readingsBeginUpdate($hash);
+
+            readingsBulkUpdate( $hash, $reading."Previous_ct", $previousPrice);
+            readingsBulkUpdate( $hash, $reading."Previous_h",  $previousHour);
+            
+            readingsEndUpdate($hash, 1 );
+        } 
+
+        if ($showNextHour eq 'yes' && defined $nextPrice){
+
+            Log3 $name, 5, 'nextPrice; '.$nextPrice;
+
+            Log3 $name, 5, 'Generate Reading; '.$reading."Next_ct";
+            Log3 $name, 5, 'Generate Reading; '.$reading."Next_h";
+
+            readingsBeginUpdate($hash);
+
+            readingsBulkUpdate( $hash, $reading."Next_ct", $currentPrice);
+            readingsBulkUpdate( $hash, $reading."Next_h",  $currentHour);
+            
+            readingsEndUpdate($hash, 1 );
+        } 
     }
 
     #local allows call of function without adding new timer.
