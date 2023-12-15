@@ -475,6 +475,10 @@ sub Voltego_UpdatePricesCallback($) {
 
                     readingsBulkUpdate( $hash, $reading, $price );
                 }
+                else{
+                    #delete redings when show is set to no
+                    deleteReadingspec ($hash, "EPEXSpot_ct_.*"    ) if ( $showEPEXSpot eq 'no' );
+                }
 
                 my $showWithTax = AttrVal($name, 'showWithTax', 'no');
                 my $taxRate     = AttrVal($name, 'TaxRate', undef);
@@ -487,6 +491,10 @@ sub Voltego_UpdatePricesCallback($) {
                     Log3 $name, 5, 'Generate Reading; '.$reading.' with price: '.$priceWithTax;
 
                     readingsBulkUpdate( $hash, $reading, $priceWithTax );
+                }
+                else{
+                    #delete redings when show is set to no
+                    deleteReadingspec ($hash, "EPEXSpotTax_ct_.*" ) if ( $showWithTax eq 'no' );
                 }
 
                 my $showWithLeviesTaxes = AttrVal($name, 'showWithLeviesTaxes', 'no');
@@ -501,6 +509,10 @@ sub Voltego_UpdatePricesCallback($) {
                     Log3 $name, 5, 'Generate Reading; '.$reading.' with price: '.$priceTotal;
 
                     readingsBulkUpdate( $hash, $reading, $priceTotal );
+                }
+                else{
+                    #delete redings when show is set to no
+                    deleteReadingspec ($hash, "TotalPrice_ct_.*"  ) if ( $showWithLeviesTaxes eq 'no' );
                 }
             }
         }
@@ -519,11 +531,6 @@ sub Voltego_UpdatePricesCallback($) {
 
         deleteReadingspec ($hash, "TotalPrice_ct_0.*") if ( !defined $prices{0}{'Min'} );
         deleteReadingspec ($hash, "TotalPrice_ct_1.*") if ( !defined $prices{1}{'Min'} );
-
-        #delete redings when show is set to no
-        deleteReadingspec ($hash, "EPEXSpot_ct_.*"    ) if ( $showEPEXSpot eq 'no' );
-        deleteReadingspec ($hash, "EPEXSpotTax_ct_.*" ) if ( $showWithTax eq 'no' );
-        deleteReadingspec ($hash, "TotalPrice_ct_.*"  ) if ( $showWithLeviesTaxes eq 'no' );
 
         readingsEndUpdate( $hash, 1 );
     };
