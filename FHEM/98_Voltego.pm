@@ -45,7 +45,7 @@ sub Voltego_Initialize($) {
     $hash->{SetFn}     = 'Voltego_Set';
     $hash->{GetFn}     = 'Voltego_Get';
     $hash->{AttrFn}    = 'Voltego_Attr';
-    $hash->{AttrList}  = 	
+    $hash->{AttrList}  =
       'showEPEXSpot:yes,no '
 	. 'showWithTax:yes,no '
 	. 'showWithLeviesTaxes:yes,no '
@@ -76,7 +76,7 @@ sub Voltego_Define($$) {
         return $errmsg;
     }
 
-	#Take clientId 
+	#Take clientId
     my $clientId = $param[2];
     $hash->{clientId} = $clientId;
 
@@ -135,7 +135,7 @@ sub Voltego_Define($$) {
     InternalTimer( gettimeofday() + 15, "Voltego_UpdateDueToTimer", $hash ) if ( defined $hash );
 
     InternalTimer( gettimeofday() + 45, "Voltego_HourTaskTimer", $hash ) if ( defined $hash );
-    
+
     return undef;
 }
 
@@ -192,7 +192,7 @@ sub Voltego_NewTokenRequest {
     #Log3 $name, 5, "Voltego $name" . "clientId: " . $clientId;
 
     my $data = {
-        client_id     => $clientId, 
+        client_id     => $clientId,
         client_secret => $clientSecret,
         scope         => $oauth{scope},
         grant_type    => 'client_credentials'
@@ -321,9 +321,9 @@ sub Voltego_Set($@) {
         RemoveInternalTimer($hash);
 
         Log3 $name, 1,"Voltego_Set $name: Stopped the timer to automatically update readings";
-        
+
         readingsSingleUpdate( $hash, 'state', 'Initialized', 0 );
-        
+
         return undef;
 
     }
@@ -380,12 +380,12 @@ sub Voltego_UpdatePricesCallback($) {
 
         Log3 $name, 5, 'Decoded: ' . Dumper($d);
 
-        if ( defined $d && ref($d) eq "HASH" && defined $d->{errors} ) 
+        if ( defined $d && ref($d) eq "HASH" && defined $d->{errors} )
         {
             log 1, Dumper $d;
-            
+
             readingsSingleUpdate( $hash, 'state', "Error: $d->{errors}[0]->{code} / $d->{errors}[0]->{title}",1 );
-            
+
             return undef;
         }
 
@@ -400,7 +400,7 @@ sub Voltego_UpdatePricesCallback($) {
         # Formatierter Datums- und Uhrzeitstring
         my $today_Day = $dt->strftime('%d'); #01-31
         my $today_Tomorrow = $dtt->strftime('%d'); #01-31
-        
+
         my %prices;
         $prices{0}{'Min'} = undef;
         $prices{0}{'Max'} = undef;
@@ -408,8 +408,8 @@ sub Voltego_UpdatePricesCallback($) {
         $prices{1}{'Max'} = undef;
 
         my $lastModified    = $d->{'last_modified'};
-        my $lastModified_Dt = DateTime->from_epoch(epoch => str2time($lastModified), time_zone => 'UTC'); 
-        
+        my $lastModified_Dt = DateTime->from_epoch(epoch => str2time($lastModified), time_zone => 'UTC');
+
         $lastModified_Dt->set_time_zone($local_time_zone);
 
         # Auf die Liste der Elemente zugreifen
@@ -437,10 +437,10 @@ sub Voltego_UpdatePricesCallback($) {
                 if($today_Day == $begin_Day){
                     $index = 0;
                 }
-                else {     
+                else {
                     $index = 1;
                 }
-              
+
                 $prices{$index}{$begin_Hour} = $price;
 
                 $reading .= $index.'_'.$begin_Hour;
@@ -458,9 +458,9 @@ sub Voltego_UpdatePricesCallback($) {
         readingsBeginUpdate($hash);
 
         for my $day (keys(%prices)) {
-            
+
             my $hours = $prices{$day};
-           
+
             for my $hour (keys(%$hours)) {
 
                 my $price = $prices{$day}{$hour};
@@ -470,9 +470,9 @@ sub Voltego_UpdatePricesCallback($) {
                 if ($showEPEXSpot eq 'yes') {
 
                     my $reading = 'EPEXSpot_ct_'. $day. '_'. $hour;
-                    
-                    Log3 $name, 5, 'Generate Reading; '.$reading.' with price: '.$price; 
-                    
+
+                    Log3 $name, 5, 'Generate Reading; '.$reading.' with price: '.$price;
+
                     readingsBulkUpdate( $hash, $reading, $price );
                 }
 
@@ -509,8 +509,8 @@ sub Voltego_UpdatePricesCallback($) {
         readingsBulkUpdate( $hash, "LastUpdate",   DateTime->now(time_zone => $local_time_zone)->strftime('%Y-%m-%d %H:%M:%S %z'));
         readingsBulkUpdate( $hash, "LastModified", $lastModified_Dt->strftime('%Y-%m-%d %H:%M:%S %z'));
         readingsBulkUpdate( $hash, "NextUpdate",   DateTime->now(time_zone => $local_time_zone)->add(seconds => InternalVal( $name, 'INTERVAL', 0 ))->strftime('%Y-%m-%d %H:%M:%S %z') );
-        
-        #Falls nicht verfügbar alte readings löschen
+
+        #delete old readings when values are not available
         deleteReadingspec ($hash, "EPEXSpot_ct_0.*") if ( !defined $prices{0}{'Min'} );
         deleteReadingspec ($hash, "EPEXSpot_ct_1.*") if ( !defined $prices{1}{'Min'} );
 
@@ -520,10 +520,14 @@ sub Voltego_UpdatePricesCallback($) {
         deleteReadingspec ($hash, "TotalPrice_ct_0.*") if ( !defined $prices{0}{'Min'} );
         deleteReadingspec ($hash, "TotalPrice_ct_1.*") if ( !defined $prices{1}{'Min'} );
 
+        #delete redings when show is set to no
+        deleteReadingspec ($hash, "EPEXSpot_ct_.*"    ) if ( $showEPEXSpot eq 'no' );
+        deleteReadingspec ($hash, "EPEXSpotTax_ct_.*" ) if ( $showWithTax eq 'no' );
+        deleteReadingspec ($hash, "TotalPrice_ct_.*"  ) if ( $showWithLeviesTaxes eq 'no' );
 
         readingsEndUpdate( $hash, 1 );
     };
-    
+
     if ($@) {
         Log3 $name, 1, 'Failure decoding: ' . $@;
     }
@@ -563,7 +567,7 @@ sub Voltego_HourTaskTimer($) {
 
     $currentTime = $currentTime->set(minute => 0, second => 0);
 
-    my $currentHour = $currentTime->strftime('%H'); 
+    my $currentHour = $currentTime->strftime('%H');
 
     Log3 $name, 5, 'currentHour; '.$currentHour;
 
@@ -571,10 +575,10 @@ sub Voltego_HourTaskTimer($) {
     my $nextHourTime = DateTime->now(time_zone => $timeZone);
 
     $nextHourTime = $nextHourTime->set(minute => 0, second => 0);
-    
+
     $nextHourTime = $nextHourTime->add(hours => 1, minutes => 1);
 
-    my $nextHour = $nextHourTime->strftime('%H'); 
+    my $nextHour = $nextHourTime->strftime('%H');
 
     my $hourTaskTimestamp = $nextHourTime->epoch;
 
@@ -593,13 +597,13 @@ sub Voltego_HourTaskTimer($) {
     Log3 $name, 5, 'previousHour; '.$previousHour;
 
     for my $reading (@readings){
-        
+
         Log3 $name, 5, 'Reading; '.$reading;
 
         my $currentPrice  = ReadingsVal($name, $reading.'ct_0_'.$currentHour, undef);
         my $previousPrice = ReadingsVal($name, $reading.'ct_0_'.$previousHour, undef);
         my $nextPrice     = ReadingsVal($name, $reading.'ct_0_'.$nextHour, undef);
-        
+
         my $showCurrentHour  = AttrVal($name, 'showCurrentHour', 'no');
         my $showPreviousHour = AttrVal($name, 'showPreviousHour', 'no');
         my $showNextHour     = AttrVal($name, 'showNextHour', 'no');
@@ -615,9 +619,9 @@ sub Voltego_HourTaskTimer($) {
 
             readingsBulkUpdate( $hash, $reading."Current_ct", $currentPrice);
             readingsBulkUpdate( $hash, $reading."Current_h",  $currentHour);
-            
+
             readingsEndUpdate($hash, 1 );
-        }   
+        }
 
         if ($showPreviousHour eq 'yes' && defined $previousPrice){
 
@@ -630,9 +634,9 @@ sub Voltego_HourTaskTimer($) {
 
             readingsBulkUpdate( $hash, $reading."Previous_ct", $previousPrice);
             readingsBulkUpdate( $hash, $reading."Previous_h",  $previousHour);
-            
+
             readingsEndUpdate($hash, 1 );
-        } 
+        }
 
         if ($showNextHour eq 'yes' && defined $nextPrice){
 
@@ -645,9 +649,9 @@ sub Voltego_HourTaskTimer($) {
 
             readingsBulkUpdate( $hash, $reading."Next_ct", $nextPrice);
             readingsBulkUpdate( $hash, $reading."Next_h",  $nextHour);
-            
+
             readingsEndUpdate($hash, 1 );
-        } 
+        }
     }
 
     #local allows call of function without adding new timer.
@@ -679,10 +683,10 @@ sub Voltego_RequestUpdate($) {
 
     my $local_time_zone = DateTime::TimeZone->new( name => 'local' );
     my $time_zone = $local_time_zone->name;
-        
+
     Log3 $name, 5, 'TimeZoneInfo 1: ' . $local_time_zone;
     Log3 $name, 5, 'TimeZoneInfo 2: ' . $time_zone;
-    
+
     # Beispiel für ein benutzerdefiniertes Format
     my $format = '%Y-%m-%dT00:00:00'; #2023-11-24T00:00:00
 
@@ -773,7 +777,7 @@ sub deleteReadingspec {
 <a name="Voltego"></a>
 <h3>Voltego</h3>
 <ul>
-    <i>Voltego</i> implements an interface to the Voltego energy price api. 
+    <i>Voltego</i> implements an interface to the Voltego energy price api.
     <br>The plugin can be used to read the hourly energy proces from the Voltego website.
     <br>The following features / functionalities are defined by now when using Voltego:
     <br>
@@ -847,7 +851,7 @@ sub deleteReadingspec {
 
             <li><i>TaxRate</i>
                 <br> Tex rate in precentage, used fpr calculating prices with tax <i>EPEXSpotTax_ct_?_??</i> or <i>TotalPrice_ct_?_??</i>.
-                <br/> 
+                <br/>
             </li>
             <li><i>LeviesTaxes_ct</i>
                 <br> Levies and taxes in cents, used fpr calculating <i>TotalPrice_ct_?_??</i>.
