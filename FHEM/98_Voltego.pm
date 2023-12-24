@@ -411,6 +411,10 @@ sub Voltego_UpdatePricesCallback($) {
         $prices{1}{'Date'} = undef;
 
         my %times;
+        my %dates;
+        
+        $dates{0} = undef;
+        $dates{1} = undef;
 
         my $lastModified    = $d->{'last_modified'};
         my $lastModified_Dt = DateTime->from_epoch(epoch => str2time($lastModified), time_zone => 'UTC');
@@ -453,8 +457,7 @@ sub Voltego_UpdatePricesCallback($) {
 
                 $prices{$index}{$begin_Hour} = $price;
                 $times{$index}{$begin_Hour} = $begin_Time;
-
-                $prices{$index}{'Date'} = $fc_Date if ( !defined $prices{$index}{'Date'} );
+                $dates{$index} = $fc_Date if ( !defined $dates{$index} );
 
                 if(!defined($prices{$index}{'Min'}) || $price < $prices{$index}{'Min'}){
                     $prices{$index}{'Min'} = $price;
@@ -476,6 +479,7 @@ sub Voltego_UpdatePricesCallback($) {
 
                 my $price = $prices{$day}{$hour};
                 my $beginTime = $times{$day}{$hour};
+                my $date = $dates{$day};
 
                 my $showEPEXSpot = AttrVal($name, 'showEPEXSpot', 'no');
 
@@ -487,6 +491,7 @@ sub Voltego_UpdatePricesCallback($) {
 
                     readingsBulkUpdate( $hash, $reading, $price );
                     readingsBulkUpdate( $hash, $reading.'_Time', $beginTime ) if ( defined $beginTime );
+                    readingsBulkUpdate( $hash, 'EPEXSpot_ct_'. $day.'_Date', $date ) if ( defined $date );
                 }
                 else{
                     #delete redings when show is set to no
@@ -505,6 +510,7 @@ sub Voltego_UpdatePricesCallback($) {
 
                     readingsBulkUpdate( $hash, $reading, $priceWithTax );
                     readingsBulkUpdate( $hash, $reading.'_Time', $beginTime ) if ( defined $beginTime );
+                    readingsBulkUpdate( $hash, 'EPEXSpotTax_ct_'. $day.'_Date', $date ) if ( defined $date );
                 }
                 else{
                     #delete redings when show is set to no
@@ -524,6 +530,7 @@ sub Voltego_UpdatePricesCallback($) {
 
                     readingsBulkUpdate( $hash, $reading, $priceTotal );
                     readingsBulkUpdate( $hash, $reading.'_Time', $beginTime ) if ( defined $beginTime );
+                    readingsBulkUpdate( $hash, 'TotalPrice_ct_'. $day.'_Date', $date ) if ( defined $date );
                 }
                 else{
                     #delete redings when show is set to no
