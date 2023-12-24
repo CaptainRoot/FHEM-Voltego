@@ -402,10 +402,13 @@ sub Voltego_UpdatePricesCallback($) {
         my $today_Tomorrow = $dtt->strftime('%d'); #01-31
 
         my %prices;
-        $prices{0}{'Min'} = undef;
-        $prices{0}{'Max'} = undef;
-        $prices{1}{'Min'} = undef;
-        $prices{1}{'Max'} = undef;
+        $prices{0}{'Min'}  = undef;
+        $prices{0}{'Max'}  = undef;
+        $prices{0}{'Date'} = undef;
+        
+        $prices{1}{'Min'}  = undef;
+        $prices{1}{'Max'}  = undef;
+        $prices{1}{'Date'} = undef;
 
         my $lastModified    = $d->{'last_modified'};
         my $lastModified_Dt = DateTime->from_epoch(epoch => str2time($lastModified), time_zone => 'UTC');
