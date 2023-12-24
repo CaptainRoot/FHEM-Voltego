@@ -405,10 +405,12 @@ sub Voltego_UpdatePricesCallback($) {
         $prices{0}{'Min'}  = undef;
         $prices{0}{'Max'}  = undef;
         $prices{0}{'Date'} = undef;
-        
+
         $prices{1}{'Min'}  = undef;
         $prices{1}{'Max'}  = undef;
         $prices{1}{'Date'} = undef;
+
+        my %times;
 
         my $lastModified    = $d->{'last_modified'};
         my $lastModified_Dt = DateTime->from_epoch(epoch => str2time($lastModified), time_zone => 'UTC');
@@ -443,9 +445,14 @@ sub Voltego_UpdatePricesCallback($) {
                 else {
                     $index = 1;
                 }
+                
+                Log3 $name, 5, 'begin_Hour : ' . $begin_Hour;
+                Log3 $name, 5, 'Begin_Time : ' . $begin_Time;
+                Log3 $name, 5, 'begin_Day  : ' . $begin_Day;
+                Log3 $name, 5, 'fc_Date    : ' . $fc_Date;
 
                 $prices{$index}{$begin_Hour} = $price;
-                $prices{$index}{$begin_Hour}{'Time'} = $begin_Time;
+                $times{$index}{$begin_Hour} = $begin_Time;
 
                 $prices{$index}{'Date'} = $fc_Date if ( !defined $prices{$index}{'Date'} );
 
@@ -468,7 +475,7 @@ sub Voltego_UpdatePricesCallback($) {
             for my $hour (keys(%$hours)) {
 
                 my $price = $prices{$day}{$hour};
-                my $beginTime = $prices{$day}{$hour}{'Time'};
+                my $beginTime = $times{$day}{$hour};
 
                 my $showEPEXSpot = AttrVal($name, 'showEPEXSpot', 'no');
 
