@@ -355,7 +355,7 @@ sub Voltego_UpdatePricesCallback($) {
 
     if ( $err ne "" )    # wenn ein Fehler bei der HTTP Abfrage aufgetreten ist
     {
-        Log3 $name, 3,
+        Log3 $name, 1,
             "error while requesting "
           . $param->{url}
           . " - $err";    # Eintrag fürs Log
@@ -426,9 +426,9 @@ sub Voltego_UpdatePricesCallback($) {
             # DateTime-Objekte erstellen
             my $begin_Dt  = DateTime->from_epoch(epoch => str2time($begin), time_zone => $local_time_zone);
             my $begin_Hour = $begin_Dt->strftime('%H'); #00-23
+            my $begin_Time = $begin_Dt->strftime('%H:%M'); #00-23:00-59
             my $begin_Day  = $begin_Dt->strftime('%d'); #01-31
-
-            my $reading = 'Price_ct_';
+            my $fc_Date    = $begin_Dt->ymd; # Retrieves date as a string in 'yyyy-mm-dd' format
 
             if($today_Day == $begin_Day || $today_Tomorrow == $begin_Day){
 
@@ -442,8 +442,9 @@ sub Voltego_UpdatePricesCallback($) {
                 }
               
                 $prices{$index}{$begin_Hour} = $price;
+                $prices{$index}{$begin_Hour}{'Time'} = $begin_Time;
 
-                $reading .= $index.'_'.$begin_Hour;
+                $prices{$index}{'Date'} = $fc_Date if ( !defined $prices{$index}{'Date'} );
 
                 if(!defined($prices{$index}{'Min'}) || $price < $prices{$index}{'Min'}){
                     $prices{$index}{'Min'} = $price;
@@ -464,6 +465,7 @@ sub Voltego_UpdatePricesCallback($) {
             for my $hour (keys(%$hours)) {
 
                 my $price = $prices{$day}{$hour};
+                my $beginTime = $prices{$day}{$hour}{'Time'};
 
                 my $showEPEXSpot = AttrVal($name, 'showEPEXSpot', 'no');
 
@@ -474,6 +476,7 @@ sub Voltego_UpdatePricesCallback($) {
                     Log3 $name, 5, 'Generate Reading; '.$reading.' with price: '.$price; 
                     
                     readingsBulkUpdate( $hash, $reading, $price );
+                    readingsBulkUpdate( $hash, $reading.'_Time', $beginTime ) if ( defined $beginTime );
                 }
 
                 my $showWithTax = AttrVal($name, 'showWithTax', 'no');
@@ -487,6 +490,7 @@ sub Voltego_UpdatePricesCallback($) {
                     Log3 $name, 5, 'Generate Reading; '.$reading.' with price: '.$priceWithTax;
 
                     readingsBulkUpdate( $hash, $reading, $priceWithTax );
+                    readingsBulkUpdate( $hash, $reading.'_Time', $beginTime ) if ( defined $beginTime );
                 }
 
                 my $showWithLeviesTaxes = AttrVal($name, 'showWithLeviesTaxes', 'no');
@@ -501,6 +505,7 @@ sub Voltego_UpdatePricesCallback($) {
                     Log3 $name, 5, 'Generate Reading; '.$reading.' with price: '.$priceTotal;
 
                     readingsBulkUpdate( $hash, $reading, $priceTotal );
+                    readingsBulkUpdate( $hash, $reading.'_Time', $beginTime ) if ( defined $beginTime );
                 }
             }
         }
