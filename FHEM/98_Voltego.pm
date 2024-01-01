@@ -478,7 +478,7 @@ sub Voltego_UpdatePricesCallback($) {
             for my $hour (keys(%$hours)) {
 
                 my $price = $prices{$day}{$hour};
-                my $beginTime = $times{$day}{$hour};
+                #my $beginTime = $times{$day}{$hour};
                 my $date = $dates{$day};
 
                 my $showEPEXSpot = AttrVal($name, 'showEPEXSpot', 'no');
@@ -490,7 +490,7 @@ sub Voltego_UpdatePricesCallback($) {
                     Log3 $name, 5, 'Generate Reading; '.$reading.' with price: '.$price;
 
                     readingsBulkUpdate( $hash, $reading, $price );
-                    readingsBulkUpdate( $hash, $reading.'_Time', $beginTime ) if ( defined $beginTime );
+                    #readingsBulkUpdate( $hash, $reading.'_Time', $beginTime ) if ( defined $beginTime );
                     readingsBulkUpdate( $hash, 'EPEXSpot_ct_'. $day.'_Date', $date ) if ( defined $date );
                 }
                 else{
@@ -509,7 +509,7 @@ sub Voltego_UpdatePricesCallback($) {
                     Log3 $name, 5, 'Generate Reading; '.$reading.' with price: '.$priceWithTax;
 
                     readingsBulkUpdate( $hash, $reading, $priceWithTax );
-                    readingsBulkUpdate( $hash, $reading.'_Time', $beginTime ) if ( defined $beginTime );
+                    #readingsBulkUpdate( $hash, $reading.'_Time', $beginTime ) if ( defined $beginTime );
                     readingsBulkUpdate( $hash, 'EPEXSpotTax_ct_'. $day.'_Date', $date ) if ( defined $date );
                 }
                 else{
@@ -529,7 +529,7 @@ sub Voltego_UpdatePricesCallback($) {
                     Log3 $name, 5, 'Generate Reading; '.$reading.' with price: '.$priceTotal;
 
                     readingsBulkUpdate( $hash, $reading, $priceTotal );
-                    readingsBulkUpdate( $hash, $reading.'_Time', $beginTime ) if ( defined $beginTime );
+                    #readingsBulkUpdate( $hash, $reading.'_Time', $beginTime ) if ( defined $beginTime );
                     readingsBulkUpdate( $hash, 'TotalPrice_ct_'. $day.'_Date', $date ) if ( defined $date );
                 }
                 else{
